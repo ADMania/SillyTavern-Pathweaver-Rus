@@ -2,6 +2,27 @@
 
 > **Elevate your stories and roleplays from good to unforgettable. Pathweaver injects fresh ideas, unexpected twists, and genre-perfect moments exactly when you need them, making every session feel like a professionally crafted story.**
 
+🇷🇺 Russian Localization
+
+This fork includes a Russian localization of Pathweaver's generation system.
+
+What's translated
+Story suggestion prompts
+Director Mode prompts
+Surprise Me prompts
+Genre templates
+Most user-facing interface elements
+Generation instructions and formatting rules
+Notes
+
+The localization focuses primarily on AI generation quality. Suggestions, story developments, plot twists, character ideas, genre prompts, and Director Mode outputs are designed to be generated in Russian.
+
+Some interface elements or technical messages may still remain in English and will be translated gradually in future updates.
+
+Result
+
+Pathweaver should reliably generate story suggestions and narrative content in Russian without requiring additional prompt engineering or language instructions.
+
 ## 🆕 What's New
 
 ### ***ver 1.5.0***
