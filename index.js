@@ -16,7 +16,7 @@
     // ============================================================
 
     const DEBUG = false; // Set to true for development logging
-    /** Console prefix for streaming instrumentation - copy from DevTools to debug Профиль подключения / Main API streaming */
+    /** Console prefix for streaming instrumentation - copy from DevTools to debug Connection Profile / Main API streaming */
     const STREAM_LOG = '[Pathweaver:Stream]';
 
     const MODULE_NAME = 'pathweaver';
@@ -63,7 +63,7 @@
         // Genre: Action, Comedy, Fantasy, Horror, Mystery, Noir, Romance, Sci-Fi, Thriller
         'fa-person-running', 'fa-masks-theater', 'fa-hat-wizard', 'fa-ghost',
         'fa-magnifying-glass', 'fa-user-secret', 'fa-heart', 'fa-rocket', 'fa-stopwatch',
-        // ── Общие purpose ─────────────────────────────────────────────────
+        // ── General purpose ─────────────────────────────────────────────────
         'fa-star', 'fa-bolt', 'fa-moon', 'fa-sun', 'fa-cloud', 'fa-leaf',
         'fa-feather', 'fa-gem', 'fa-crown', 'fa-mask', 'fa-skull', 'fa-dragon',
         'fa-wand-sparkles', 'fa-glasses', 'fa-dice', 'fa-puzzle-piece',
@@ -76,7 +76,7 @@
         'fa-chess-queen', 'fa-staff-snake'
     ];
 
-    /** Шрифт заголовков dropdown: value -> { fontFamily, label } for display and option styling */
+    /** Title font dropdown: value -> { fontFamily, label } for display and option styling */
     const TITLE_FONT_OPTIONS = Object.freeze({
         none: { fontFamily: 'inherit', label: 'None (hidden)' },
         default: { fontFamily: "'Crimson Text', Georgia, serif", label: 'Default' },
@@ -121,7 +121,7 @@
         suggestion_length: 'short', // 'short' (2-3 sentences) or 'long' (4-6 sentences)
         stream_suggestions: false,  // Stream generation per card (Ollama & OpenAI-compatible only)
         include_scenario: true,     // Include character scenario in context
-        include_description: true,  // Include Описание персонажа in context
+        include_description: true,  // Include character description in context
         include_worldinfo: false,   // Include World Info lorebook in context
         custom_styles: [],
         hide_animated_bar: false,
@@ -392,22 +392,21 @@
             if (!response.ok) throw new Error('Failed');
             return await response.text();
         } catch {
-            return `Вы — ассистент по креативному письму, генерирующий предложения по развитию сюжета.
+            return `You are a creative writing assistant generating story direction suggestions.
 
-ЗАДАЧА: Сгенерируйте оригинальные предложения о том, что может произойти дальше в повествовании.
+TASK: Generate distinct suggestions for what could happen next in the narrative.
 
-ФОРМАТ ВЫХОДА:
-
-[ЭМОДЗИ] ЗАГОЛОВОК
-ОПИСАНИЕ
+OUTPUT FORMAT:
+[EMOJI] TITLE
+DESCRIPTION
 
 ---
 
-ТРЕБОВАНИЯ:
-- Каждое предложение должно быть оригинальным и креативным.
-- Заголовки должны быть броскими и выразительными (менее 8 слов).
-- Соответствовать тону и жанру развивающегося сюжета.
-- НЕ включать нумерацию или преамбулу.`;
+GUIDELINES:
+- Each suggestion should be distinct and creative
+- Keep titles punchy and evocative (under 8 words)
+- Match the tone and genre of the ongoing story
+- Do NOT include numbering or preamble`;
         }
     }
 
@@ -505,7 +504,7 @@
 
             if (entries.length > 0) worldInfo = entries.slice(0, 10).join('\n\n');
         } catch (err) {
-            warn('Не удалось извлечь лор мира:', err);
+            warn('Failed to extract World Info:', err);
         }
 
         return {
@@ -524,19 +523,19 @@
     // GENERATION LOGIC (Pattern from EchoChamber)
     // ============================================================
 
-    async function generateSuggestions(category, forceОбновить = false, customDirections = null, mode = 'single_scene', outputContainer = null) {
-        log('Генерация предложений for:', category);
+    async function generateSuggestions(category, forceRefresh = false, customDirections = null, mode = 'single_scene', outputContainer = null) {
+        log('Generating suggestions for:', category);
         const stContext = SillyTavern.getContext();
         const context = stContext;
 
         if (!stContext) {
-            error('Контекст SillyTavern недоступен');
+            error('SillyTavern context not available');
             return;
         }
 
         const storyContext = extractContext();
         if (!storyContext) {
-            showEmptyState('Начните диалог, чтобы получить предложения', outputContainer);
+            showEmptyState('Start a conversation to get suggestions', outputContainer);
             return;
         }
 
@@ -547,7 +546,7 @@
                 cachedChatId = storyContext.chatId;
             }
 
-            if (!forceОбновить && cachedSuggestions[category]) {
+            if (!forceRefresh && cachedSuggestions[category]) {
                 displaySuggestions(cachedSuggestions[category], category, outputContainer);
                 return;
             }
@@ -558,7 +557,7 @@
         currentCategory = category;
 
         // Determine loading message
-        let loadingMsg = 'Генерация предложений...';
+        let loadingMsg = 'Generating Suggestions...';
 
         showLoadingState(category, outputContainer, loadingMsg);
         abortController = new AbortController();
@@ -578,14 +577,14 @@
             let contextBlock = '';
 
             if (storyContext.characterInfo) contextBlock += `${storyContext.characterInfo}\n\n`;
-            if (settings.include_scenario && storyContext.scenario) contextBlock += `Сценарий: ${storyContext.scenario}\n\n`;
+            if (settings.include_scenario && storyContext.scenario) contextBlock += `Scenario: ${storyContext.scenario}\n\n`;
             if (settings.include_description && storyContext.description) {
-                contextBlock += `Описание персонажа: ${storyContext.description.substring(0, 10000)}\n\n`;
+                contextBlock += `Character Description: ${storyContext.description.substring(0, 10000)}\n\n`;
             }
             if (settings.include_worldinfo && storyContext.worldInfo) {
-                contextBlock += `Лор мира:\n${storyContext.worldInfo.substring(0, 10000)}\n\n`;
+                contextBlock += `World Lore:\n${storyContext.worldInfo.substring(0, 10000)}\n\n`;
             }
-            contextBlock += `Недавняя переписка:\n${storyContext.history}`;
+            contextBlock += `Recent conversation:\n${storyContext.history}`;
 
             let userPrompt = '';
             let calculatedMaxTokens = 0;
@@ -606,9 +605,9 @@
 
             if (category === 'director' && customDirections?.length) {
                 if (mode === 'story_beats') {
-                    // Сюжетные этапы: 1 input = 1 suggestion (Classic behavior)
+                    // Story Beats: 1 input = 1 suggestion (Classic behavior)
                     const dirList = customDirections.map((d, i) => `${i + 1}. ${d}`).join('\n');
-                    userPrompt = `[КОНТЕКСТ ИСТОРИИ]\n${contextBlock}\n\n[ЗАДАЧА]\nСгенерируй ровно ${customDirections.length} вариантов, по одному для каждого из следующих указаний.\n\n[УКАЗАНИЯ ПОЛЬЗОВАТЕЛЯ]:\n${dirList}\n\nФОРМАТ:\n[ЭМОДЗИ] ЗАГОЛОВОК\nОПИСАНИЕ\n\nТРЕБОВАНИЯ:\n- НЕ СМЕШИВАЙ СОБЫТИЯ: Каждый вариант должен строго соответствовать своему пункту. Не объединяй события из разных пунктов, если это явно не указано.\n- Точно следуй указанному направлению для каждого варианта.\n- Заголовки должны быть краткими и написанными простым текстом.\n- ${settings.suggestion_length === 'long' ? 'Используй 4–6 предложений для каждого варианта.' : 'Используй 2–3 предложения для каждого варианта.'}\n- Не добавляй вступлений или пояснений.${settings.stream_suggestions ? '\n\nПОТОКОВЫЙ ВЫВОД: Выводи по одному завершённому варианту за раз. Каждый вариант ОБЯЗАН начинаться с: [ЭМОДЗИ] ЗАГОЛОВОК затем должно следовать ОПИСАНИЕ; После каждого варианта выводи разделитель: --- . НЕ повторяй заголовки и не копируй содержимое между вариантами. Каждый вариант должен быть самостоятельным и независимым.' : ''}`;
+                    userPrompt = `[STORY CONTEXT]\n${contextBlock}\n\n[TASK]\nGenerate exactly ${customDirections.length} suggestions, one for each of the following directions.\n\nUSER DIRECTIONS:\n${dirList}\n\nFORMAT:\n[EMOJI] TITLE\nDESCRIPTION\n\nGUIDELINES:\n- PREVENT BLEED: Each suggestion must be strictly isolated to its corresponding input beat. Do NOT combine events from different beats unless explicitly requested.\n- Follow the specific direction for each suggestion EXACTLY.\n- Keep titles punchy and plain text (no asterisks).\n- ${settings.suggestion_length === 'long' ? 'Write 4-6 sentences per suggestion.' : 'Write 2-3 sentences per suggestion.'}\n- Do NOT include any preamble.${settings.stream_suggestions ? '\n\nSTREAMING: Output one complete suggestion at a time. Each suggestion MUST start with [EMOJI] TITLE then DESCRIPTION; end each with --- before the next. Do NOT repeat a title or copy content from one suggestion into another. Every suggestion is independent and self-contained.' : ''}`;
                     // Recalculate for director mode with custom directions
                     const dirTokensNeeded = customDirections.length * tokensPerSuggestion + 800;
                     if (settings.reasoning_mode) {
@@ -617,13 +616,13 @@
                         calculatedMaxTokens = Math.min(8192, Math.max(2048, dirTokensNeeded));
                     }
                 } else {
-                    // Одна сцена: Combined inputs = N suggestions (New behavior)
+                    // Single Scene: Combined inputs = N suggestions (New behavior)
                     const combinedDirections = customDirections.join(' ');
                     const lengthInstruction = settings.suggestion_length === 'long'
-                        ? 'Каждое описание должно содержать 4–6 предложений и включать больше деталей и контекста.'
-                        : 'Каждое описание должно содержать 2–3 предложения и быть кратким, но выразительным.';
+                        ? 'Each description should be 4-6 sentences, providing rich detail and context.'
+                        : 'Each description should be 2-3 sentences, concise but evocative.';
 
-                    userPrompt = `[КОНТЕКСТ ИСТОРИИ]\n${contextBlock}\n\n[ЗАДАЧА]\nПользователь предоставил следующее описание или направление для следующей сцены:\n"${combinedDirections}"\n\nНа основе этого описания создай ровно ${settings.suggestions_count} РАЗЛИЧНЫХ вариантов развития сцены.\n${lengthInstruction}\n\nФОРМАТ:\n[ЭМОДЗИ] ЗАГОЛОВОК\nОПИСАНИЕ\n\nТРЕБОВАНИЯ:\n- Все варианты должны соответствовать указанию пользователя, но предлагать разные способы реализации идеи. \n- Заголовки должны быть краткими и написанными простым текстом.\n- Не добавляй вступлений или пояснений.${settings.stream_suggestions ? '\n\nПОТОКОВЫЙ ВЫВОД: Выводи по одному завершённому варианту за раз. Каждый вариант ОБЯЗАН начинаться с [ЭМОДЗИ] ЗАГОЛОВОК затем должно следовать ОПИСАНИЕ; После каждого варианта выводи разделитель --- . Не повторяй заголовки и не копируй содержимое между вариантами. Каждый вариант должен быть самостоятельным и независимым.' : ''}`;
+                    userPrompt = `[STORY CONTEXT]\n${contextBlock}\n\n[TASK]\nThe user has provided the following direction/scenario for the next scene:\n"${combinedDirections}"\n\nBased on this direction, generate exactly ${settings.suggestions_count} DISTINCT options or variations for how this scene could play out.\n${lengthInstruction}\n\nFORMAT:\n[EMOJI] TITLE\nDESCRIPTION\n\nGUIDELINES:\n- All suggestions must follow the user's direction but offer different execution/flavor.\n- Keep titles punchy and plain text.\n- Do NOT include any preamble.${settings.stream_suggestions ? '\n\nSTREAMING: Output one complete suggestion at a time. Each suggestion MUST start with [EMOJI] TITLE then DESCRIPTION; end each with --- before the next. Do NOT repeat a title or copy content from one suggestion into another. Every suggestion is independent and self-contained.' : ''}`;
                     // Recalculate for director single scene mode
                     if (settings.reasoning_mode) {
                         calculatedMaxTokens = Math.max(settings.max_output_tokens || 8192, baseTokensNeeded);
@@ -633,10 +632,10 @@
                 }
             } else {
                 const lengthInstruction = settings.suggestion_length === 'long'
-                    ? 'Каждое описание должно содержать 4–6 предложений и включать больше деталей и контекста.'
-                    : 'Каждое описание должно содержать 2–3 предложения и быть кратким, но выразительным.';
+                    ? 'Each description should be 4-6 sentences, providing rich detail and context.'
+                    : 'Each description should be 2-3 sentences, concise but evocative.';
 
-                userPrompt = `[КОНТЕКСТ ИСТОРИИ]\n${contextBlock}\n\n[ЗАДАЧА]\nСгенерируй ровно ${settings.suggestions_count} различных вариантов.\n${lengthInstruction}\nСтрого соблюдай формат, указанный в системных инструкциях. \nВАЖНО: Используй простой текст для заголовков. - Не заключай заголовки в **звёздочки** и не используй Markdown.\nНе добавляй вступлений или пояснений.${settings.stream_suggestions ? '\n\nПОТОКОВЫЙ ВЫВОД: Выводи по одному завершённому варианту за раз. Каждый вариант ОБЯЗАН начинаться с [ЭМОДЗИ] ЗАГОЛОВОК затем должно следовать ОПИСАНИЕ; После каждого варианта выводи разделитель --- . Не повторяй заголовки и не копируй содержимое между вариантами. Каждый вариант должен быть самостоятельным и независимым.' : ''}`;
+                userPrompt = `[STORY CONTEXT]\n${contextBlock}\n\n[TASK]\nGenerate exactly ${settings.suggestions_count} distinct suggestions.\n${lengthInstruction}\nFollow the format specified in the system instructions exactly.\nIMPORTANT: Use PLAIN TEXT for titles - do NOT wrap titles in **asterisks**.\nDo NOT include any preamble.${settings.stream_suggestions ? '\n\nSTREAMING: Output one complete suggestion at a time. Each suggestion MUST start with [EMOJI] TITLE then DESCRIPTION; end each with --- before the next. Do NOT repeat a title or copy content from one suggestion into another. Every suggestion is independent and self-contained.' : ''}`;
                 // Use the pre-calculated baseTokensNeeded (already calculated above)
                 if (settings.reasoning_mode) {
                     calculatedMaxTokens = Math.max(settings.max_output_tokens || 8192, baseTokensNeeded);
@@ -651,7 +650,7 @@
             // Fail fast: avoid silently falling back to default API when profile is selected but none chosen
             if (settings.source === 'profile') {
                 if (!settings.preset || !String(settings.preset).trim()) {
-                    throw new Error('Пожалуйста выберите профиль подключения');
+                    throw new Error('Please select a connection profile');
                 }
             }
 
@@ -659,7 +658,7 @@
             if (settings.stream_suggestions) {
                 if (settings.source === 'ollama' || settings.source === 'openai') {
                     try {
-                        await runStreamingГенерация({
+                        await runStreamingGeneration({
                             source: settings.source,
                             categoryPrompt,
                             userPrompt,
@@ -670,10 +669,10 @@
                         });
                     } catch (err) {
                         if (err.name === 'AbortError' || (abortController && abortController.signal.aborted)) {
-                            showEmptyState('Генерация отменена пользователем', outputContainer);
+                            showEmptyState('Generation cancelled by user', outputContainer);
                         } else {
-                            error('Генерация ответа провалена:', err);
-                            showErrorState(err.message || 'API запрос провален', outputContainer);
+                            error('Streaming generation failed:', err);
+                            showErrorState(err.message || 'API request failed', outputContainer);
                         }
                     } finally {
                         isGenerating = false;
@@ -684,7 +683,7 @@
                 if (settings.source === 'profile' || settings.source === 'default') {
                     let streamSucceeded = false;
                     try {
-                        await runStreamingГенерация({
+                        await runStreamingGeneration({
                             source: settings.source,
                             categoryPrompt,
                             userPrompt,
@@ -696,7 +695,7 @@
                         streamSucceeded = true;
                     } catch (err) {
                         if (err.name === 'AbortError' || (abortController && abortController.signal.aborted)) {
-                            showEmptyState('Генерация cancelled by user', outputContainer);
+                            showEmptyState('Generation cancelled by user', outputContainer);
                             isGenerating = false;
                             abortController = null;
                             return;
@@ -716,9 +715,9 @@
             if (settings.source === 'profile' && settings.preset) {
                 const cm = stContext.extensionSettings?.connectionManager;
                 const profile = cm?.profiles?.find(p => p.name === settings.preset);
-                if (!profile) throw new Error(`Профиль '${settings.preset}' не найден`);
+                if (!profile) throw new Error(`Profile '${settings.preset}' not found`);
 
-                if (!stContext.ConnectionManagerRequestService) throw new Error('ConnectionManagerRequestService недоступен');
+                if (!stContext.ConnectionManagerRequestService) throw new Error('ConnectionManagerRequestService not available');
 
                 const messages = [
                     { role: 'system', content: categoryPrompt },
@@ -823,9 +822,9 @@
 
         } catch (err) {
             if (err.name === 'AbortError' || (abortController && abortController.signal.aborted)) {
-                showEmptyState('Генерация cancelled by user', outputContainer);
+                showEmptyState('Generation cancelled by user', outputContainer);
             } else {
-                error('Генерация failed:', err);
+                error('Generation failed:', err);
                 showErrorState(err.message || 'API request failed', outputContainer);
             }
         } finally {
@@ -959,7 +958,7 @@
                 suggestions.push({
                     emoji,
                     title: title.substring(0, 100),
-                    description: description || 'Нажмите, чтобы использовать этот вариант'
+                    description: description || 'Click to use this suggestion'
                 });
             }
         }
@@ -1014,7 +1013,7 @@
         return {
             emoji,
             title: title.substring(0, 100),
-            description: description || 'Нажмите, чтобы использовать этот вариант'
+            description: description || 'Click to use this suggestion'
         };
     }
 
@@ -1048,8 +1047,8 @@
         const cardsHtml = Array.from({ length: count }, (_, i) => {
             const isFirst = i === 0;
             const stateClass = isFirst ? 'pw_streaming_active' : 'pw_streaming_waiting';
-            const title = isFirst ? 'Генерация...' : `Вариант ${i + 1}`;
-            const desc = isFirst ? 'Создаётся первый вариант...' : (i === 1 ? 'Следующий' : 'Ожидание...');
+            const title = isFirst ? 'Streaming…' : `Suggestion ${i + 1}`;
+            const desc = isFirst ? 'First suggestion is being generated…' : (i === 1 ? 'Up next' : 'Waiting…');
             return `
                 <div class="pw_suggestion_card pw_streaming_slot ${stateClass}" data-slot="${i}" data-streaming="1">
                     <div class="pw_card_header">
@@ -1063,10 +1062,10 @@
         body.html(`
             <div class="pw_status">
                 <i class="fa-solid fa-circle-notch pw_spin"></i>
-                <span>Генерация  ${catName} вариантов...</span>
+                <span>Streaming ${catName} suggestions...</span>
                 <div class="pw_status_actions">
                     <button class="pw_status_btn cancel pw_throb" id="pw_cancel_gen">
-                        <i class="fa-solid fa-xmark"></i> Отмена
+                        <i class="fa-solid fa-xmark"></i> Cancel
                     </button>
                 </div>
             </div>
@@ -1112,16 +1111,16 @@
             card.find('.pw_card_title').text(safeTitle);
             card.find('.pw_card_description').text(safeDesc);
             card.find('.pw_card_actions').attr('style', '').html(`
-                <button class="pw_card_action_btn" data-action="copy" title="Скопировать"><i class="fa-solid fa-copy"></i> Копировать</button>
-                <button class="pw_card_action_btn" data-action="insert" title="Вставить в поле ввода"><i class="fa-solid fa-plus"></i> Вставить</button>
-                <button class="pw_card_action_btn primary" data-action="send" title="Вставить и отправить"><i class="fa-solid fa-paper-plane"></i> Отправить</button>
+                <button class="pw_card_action_btn" data-action="copy" title="Copy to clipboard"><i class="fa-solid fa-copy"></i> Copy</button>
+                <button class="pw_card_action_btn" data-action="insert" title="Insert into input field"><i class="fa-solid fa-plus"></i> Insert</button>
+                <button class="pw_card_action_btn primary" data-action="send" title="Insert and send"><i class="fa-solid fa-paper-plane"></i> Send</button>
             `);
             card.attr('data-index', index);
             const nextActive = grid.find('.pw_streaming_waiting').first();
             if (nextActive.length) {
                 nextActive.removeClass('pw_streaming_waiting').addClass('pw_streaming_active');
                 nextActive.find('.pw_card_emoji').html('<i class="fa-solid fa-pen-nib"></i>');
-                nextActive.find('.pw_card_title').text('Генерация...');
+                nextActive.find('.pw_card_title').text('Streaming…');
                 nextActive.find('.pw_card_description').text('').removeClass('pw_streaming_placeholder');
             }
         }
@@ -1143,7 +1142,7 @@
     }
 
     /**
-     * Consume a ReadableStream (e.g. from Профиль подключения / Gemini); detect SSE or NDJSON and push text into addContent.
+     * Consume a ReadableStream (e.g. from Connection Profile / Gemini); detect SSE or NDJSON and push text into addContent.
      * @param {ReadableStream} stream - response.body or any getReader()-able stream
      * @param {function(string): void} addContent - called with extracted text (may be called many times)
      * @param {function(string, boolean): void} onChunk - optional (chunkText, isFirst) for logging
@@ -1200,7 +1199,7 @@
         }
     }
 
-    async function runStreamingГенерация(opts) {
+    async function runStreamingGeneration(opts) {
         const { source, categoryPrompt, userPrompt, calculatedMaxTokens, category, outputContainer, abortController } = opts;
         const body = outputContainer || jQuery('#pw_modal_body');
         const suggestionsArray = [];
@@ -1210,7 +1209,7 @@
 
         showStreamingState(outputContainer, category);
         if (source === 'profile' || source === 'default') {
-            console.log(STREAM_LOG, source === 'profile' ? 'Профиль подключения' : 'Main API', 'streaming attempt started. Copy these logs to debug.');
+            console.log(STREAM_LOG, source === 'profile' ? 'Connection Profile' : 'Main API', 'streaming attempt started. Copy these logs to debug.');
         }
 
         const processBuffer = () => {
@@ -1232,8 +1231,8 @@
                 const stContext = SillyTavern.getContext();
                 const cm = stContext?.extensionSettings?.connectionManager;
                 const profile = cm?.profiles?.find(p => p.name === settings.preset);
-                if (!profile) throw new Error(`Профиль '${settings.preset}' не найден`);
-                if (!stContext.ConnectionManagerRequestService) throw new Error('ConnectionManagerRequestService недоступен');
+                if (!profile) throw new Error(`Profile '${settings.preset}' not found`);
+                if (!stContext.ConnectionManagerRequestService) throw new Error('ConnectionManagerRequestService not available');
                 const messages = [
                     { role: 'system', content: categoryPrompt },
                     { role: 'user', content: userPrompt }
@@ -1245,26 +1244,26 @@
                     includePreset: true,
                     includeInstruct: true
                 };
-                console.log(STREAM_LOG, 'Профиль подключения: attempting stream=true', { profileName: profile.name, profileId: profile.id, maxTokens: calculatedMaxTokens, requestOptsKeys: Object.keys(requestOpts) });
+                console.log(STREAM_LOG, 'Connection Profile: attempting stream=true', { profileName: profile.name, profileId: profile.id, maxTokens: calculatedMaxTokens, requestOptsKeys: Object.keys(requestOpts) });
                 let rawResponse = stContext.ConnectionManagerRequestService.sendRequest(profile.id, messages, calculatedMaxTokens, requestOpts);
                 let response = rawResponse && typeof rawResponse.then === 'function' ? await rawResponse : rawResponse;
                 if (typeof response === 'function') {
-                    console.log(STREAM_LOG, 'Профиль подключения: response is a function (generator?), calling it to get iterator');
+                    console.log(STREAM_LOG, 'Connection Profile: response is a function (generator?), calling it to get iterator');
                     response = response();
                     if (response && typeof response.then === 'function') response = await response;
                 }
                 const isAsyncIterable = response != null && (typeof response[Symbol.asyncIterator] === 'function' || typeof response.next === 'function');
-                console.log(STREAM_LOG, 'Профиль подключения: response received', { type: typeof response, constructor: response?.constructor?.name, hasBody: !!response?.body, hasGetReader: typeof response?.body?.getReader === 'function', hasContent: !!response?.content, contentLength: typeof response?.content === 'string' ? response.content.length : 0, isAsyncIterable });
+                console.log(STREAM_LOG, 'Connection Profile: response received', { type: typeof response, constructor: response?.constructor?.name, hasBody: !!response?.body, hasGetReader: typeof response?.body?.getReader === 'function', hasContent: !!response?.content, contentLength: typeof response?.content === 'string' ? response.content.length : 0, isAsyncIterable });
                 if (response?.content != null && typeof response.content === 'string') {
-                    console.log(STREAM_LOG, 'Профиль подключения: full content (non-streaming), using as single buffer. Length:', response.content.length);
+                    console.log(STREAM_LOG, 'Connection Profile: full content (non-streaming), using as single buffer. Length:', response.content.length);
                     contentBuffer = response.content;
                     processBuffer();
                 } else if (response && typeof response === 'string') {
-                    console.log(STREAM_LOG, 'Профиль подключения: response is string (non-streaming). Length:', response.length);
+                    console.log(STREAM_LOG, 'Connection Profile: response is string (non-streaming). Length:', response.length);
                     contentBuffer = response;
                     processBuffer();
                 } else if (isAsyncIterable) {
-                    console.log(STREAM_LOG, 'Профиль подключения: consuming response as async iterator (e.g. AsyncGenerator from Gemini)');
+                    console.log(STREAM_LOG, 'Connection Profile: consuming response as async iterator (e.g. AsyncGenerator from Gemini)');
                     let firstChunk = true;
                     try {
                         for await (const chunk of response) {
@@ -1276,7 +1275,7 @@
                             }
                             if (text) {
                                 if (firstChunk) {
-                                    console.log(STREAM_LOG, 'Профиль подключения: first chunk sample (first 200 chars):', JSON.stringify(String(text).slice(0, 200)));
+                                    console.log(STREAM_LOG, 'Connection Profile: first chunk sample (first 200 chars):', JSON.stringify(String(text).slice(0, 200)));
                                     firstChunk = false;
                                 }
                                 if (contentBuffer.length === 0) {
@@ -1289,25 +1288,25 @@
                                 processBuffer();
                             }
                         }
-                        console.log(STREAM_LOG, 'Профиль подключения: async iterator finished. Total content length:', contentBuffer.length);
+                        console.log(STREAM_LOG, 'Connection Profile: async iterator finished. Total content length:', contentBuffer.length);
                     } catch (iterErr) {
-                        console.log(STREAM_LOG, 'Профиль подключения: async iterator error:', iterErr?.message || String(iterErr));
+                        console.log(STREAM_LOG, 'Connection Profile: async iterator error:', iterErr?.message || String(iterErr));
                         throw iterErr;
                     }
                 } else if (response?.body && typeof response.body.getReader === 'function') {
-                    console.log(STREAM_LOG, 'Профиль подключения: consuming response.body as ReadableStream');
+                    console.log(STREAM_LOG, 'Connection Profile: consuming response.body as ReadableStream');
                     await consumeGenericStream(response.body, (text) => { contentBuffer += text; processBuffer(); }, (chunk, isFirst) => {
-                        if (isFirst) console.log(STREAM_LOG, 'Профиль подключения: first chunk sample (first 200 chars):', JSON.stringify(String(chunk).slice(0, 200)));
+                        if (isFirst) console.log(STREAM_LOG, 'Connection Profile: first chunk sample (first 200 chars):', JSON.stringify(String(chunk).slice(0, 200)));
                     });
-                    console.log(STREAM_LOG, 'Профиль подключения: stream finished. Total content length:', contentBuffer.length);
+                    console.log(STREAM_LOG, 'Connection Profile: stream finished. Total content length:', contentBuffer.length);
                 } else if (response && typeof response.getReader === 'function') {
-                    console.log(STREAM_LOG, 'Профиль подключения: consuming response as ReadableStream');
+                    console.log(STREAM_LOG, 'Connection Profile: consuming response as ReadableStream');
                     await consumeGenericStream(response, (text) => { contentBuffer += text; processBuffer(); }, (chunk, isFirst) => {
-                        if (isFirst) console.log(STREAM_LOG, 'Профиль подключения: first chunk sample (first 200 chars):', JSON.stringify(String(chunk).slice(0, 200)));
+                        if (isFirst) console.log(STREAM_LOG, 'Connection Profile: first chunk sample (first 200 chars):', JSON.stringify(String(chunk).slice(0, 200)));
                     });
-                    console.log(STREAM_LOG, 'Профиль подключения: stream finished. Total content length:', contentBuffer.length);
+                    console.log(STREAM_LOG, 'Connection Profile: stream finished. Total content length:', contentBuffer.length);
                 } else {
-                    console.log(STREAM_LOG, 'Профиль подключения: unknown response shape, attempting to extract text. Keys:', response ? Object.keys(response) : []);
+                    console.log(STREAM_LOG, 'Connection Profile: unknown response shape, attempting to extract text. Keys:', response ? Object.keys(response) : []);
                     const text = response?.choices?.[0]?.message?.content ?? (typeof response === 'string' ? response : '');
                     if (text) contentBuffer = text; processBuffer();
                 }
@@ -1459,7 +1458,7 @@
             body.find('.pw_status').remove();
         } else {
             body.find('.pw_status').remove();
-            showEmptyState('Не удалось создать варианты. Попробуйте ещё раз.', outputContainer);
+            showEmptyState('No suggestions could be generated. Try again.', outputContainer);
         }
     }
 
@@ -1480,7 +1479,7 @@
 
         const allCategories = getAllCategories();
 
-        // 4. Surprise Dropdown (built first so it can be inserted right after Сценарист)
+        // 4. Surprise Dropdown (built first so it can be inserted right after Director)
         let surpriseItems = '';
         // Main categories
         for (const [key, cat] of Object.entries(MAIN_CATEGORIES)) {
@@ -1521,46 +1520,46 @@
 
         const surpriseDropdownHtml = `
             <div class="pw_dropdown_container pw_surprise_container">
-                <button class="pw_dropdown_btn pw_surprise_btn${surpriseCount > 0 ? ' pw_surprise_armed' : ''}" data-name="Surprise" title="Удиви меня">
+                <button class="pw_dropdown_btn pw_surprise_btn${surpriseCount > 0 ? ' pw_surprise_armed' : ''}" data-name="Surprise" title="Surprise Me">
                     <i class="fa-solid fa-wand-sparkles"></i>
                     ${surpriseIndicatorHtml}
                 </button>
                 <div class="pw_dropdown_menu pw_surprise_menu">
                     <div class="pw_surprise_menu_header">
-                        <i class="fa-solid fa-wand-sparkles"></i> Удиви меня
-                        <span class="pw_setting_tooltip_icon" title="Удиви меня secretly injects an AI-generated suggestion into the chat context a set number of messages before it fires. Pick a style, and Pathweaver will quietly arm a hidden prompt. When the countdown hits, the suggestion appears naturally — like the story took an unexpected turn on its own.">?</span>
+                        <i class="fa-solid fa-wand-sparkles"></i> Surprise Me
+                        <span class="pw_setting_tooltip_icon" title="Surprise Me secretly injects an AI-generated suggestion into the chat context a set number of messages before it fires. Pick a style, and Pathweaver will quietly arm a hidden prompt. When the countdown hits, the suggestion appears naturally — like the story took an unexpected turn on its own.">?</span>
                     </div>
                     ${settings.surprise_endless ? `<div class="pw_surprise_endless_badge">
-                        <i class="fa-solid fa-infinity"></i> Бесконечные сюрпризы активны
+                        <i class="fa-solid fa-infinity"></i> Endless Surprises active
                     </div>` : ''}
                     ${surpriseCount > 0 ? `<div class="pw_surprise_active_info">
                         <span class="pw_surprise_active_info_label">
                             <i class="fa-solid fa-circle-check" style="color: var(--pw-success);"></i>
                             ${surpriseCount} surprise${surpriseCount > 1 ? 's' : ''} armed
                         </span>
-                        <button class="pw_surprise_clear_btn" id="pw_surprise_clear">Очистить всё</button>
+                        <button class="pw_surprise_clear_btn" id="pw_surprise_clear">Clear all</button>
                     </div>` : ''}
                     ${surpriseItems}
                 </div>
             </div>`;
 
-        // 1. Built-in Buttons — Сценарист first, then Удиви меня, then main categories
+        // 1. Built-in Buttons — Director first, then Surprise Me, then main categories
         let builtinButtonsHtml = '';
 
-        // Сценарист Button (Special)
+        // Director Button (Special)
         builtinButtonsHtml += `
             <button class="pw_cat_btn pw_director_btn"
                     data-category="director"
-                    data-name="Сценарист"
-                    title="Сценарист: Take control of the story">
+                    data-name="Director"
+                    title="Director: Take control of the story">
                 <i class="fa-solid fa-clapperboard"></i>
             </button>`;
 
-        // Удиви меня dropdown — immediately after Сценарист
+        // Surprise Me dropdown — immediately after Director
         builtinButtonsHtml += surpriseDropdownHtml;
 
         // Main Categories (Context, Twist, Character, Explicit)
-        let categoryOptionsHtml = '<option value="director">Режим режиссёра</option>';
+        let categoryOptionsHtml = '<option value="director">Director Mode</option>';
 
         for (const [key, cat] of Object.entries(MAIN_CATEGORIES)) {
             if (cat.nsfw && !settings.show_explicit) continue;
@@ -1706,7 +1705,7 @@
             const category = jQuery(this).data('category');
             if (category === 'director') {
                 e.stopPropagation();
-                showСценаристModal();
+                showDirectorModal();
                 return;
             }
             openSuggestionsModal(category);
@@ -1761,11 +1760,11 @@
             const category = this.value;
             if (category) {
                 if (category === 'director') {
-                    showСценаристModal();
+                    showDirectorModal();
                 } else {
                     openSuggestionsModal(category);
                 }
-                this.selectedIndex = 0; // Сбросить
+                this.selectedIndex = 0; // Reset
             }
         });
 
@@ -1810,7 +1809,7 @@
             clearAllSurprises();
             renderSurpriseQueue();
             createActionBar();
-            showToast('Все сюрпризы очищены!');
+            showToast('Surprises cleared!');
         });
     }
 
@@ -1870,7 +1869,7 @@
     // UI - SUGGESTIONS MODAL
     // ============================================================
 
-    function showСценаристModal() {
+    function showDirectorModal() {
         // Remove existing modal to ensure fresh state and logic
         if (jQuery('#pw_director_modal').length) {
             jQuery('#pw_director_modal').remove();
@@ -1882,7 +1881,7 @@
                 <div class="pw_modal_header">
                     <h3 class="pw_modal_title">
                         <i class="fa-solid fa-clapperboard" style="color: var(--pw-director-color);"></i>
-                        Режим режиссёра
+                        Director Mode
                     </h3>
                     <button class="pw_modal_close" id="pw_close_director">&times;</button>
                 </div>
@@ -1895,12 +1894,12 @@
                         <div class="pw_director_view visible" id="pw_director_inputs_view">
                             <div class="pw_director_mode_switch">
                                 <div class="pw_mode_option ${directorMode === 'single_scene' ? 'active' : ''}" data-mode="single_scene">
-                                    <div class="pw_mode_title"><i class="fa-solid fa-film"></i> Одна сцена</div>
-                                    <div class="pw_mode_desc">Объединить все указания в одну детально проработанную сцену</div>
+                                    <div class="pw_mode_title"><i class="fa-solid fa-film"></i> Single Scene</div>
+                                    <div class="pw_mode_desc">Combine inputs into one rich scene</div>
                                 </div>
                                 <div class="pw_mode_option ${directorMode === 'story_beats' ? 'active' : ''}" data-mode="story_beats">
-                                    <div class="pw_mode_title"><i class="fa-solid fa-list-check"></i> Сюжетные этапы</div>
-                                    <div class="pw_mode_desc">Один вариант для каждого указанного события</div>
+                                    <div class="pw_mode_title"><i class="fa-solid fa-list-check"></i> Story Beats</div>
+                                    <div class="pw_mode_desc">One suggestion per input beat</div>
                                 </div>
                             </div>
 
@@ -1910,19 +1909,19 @@
                             
                             <div class="pw_director_actions" style="justify-content: space-between; gap: 10px;">
                                 <button class="pw_add_direction_btn" id="pw_reset_dir_btn" style="width: auto; flex: 1; border-color: var(--pw-glass-border); background: transparent;">
-                                    <i class="fa-solid fa-rotate-left"></i> Сбросить
+                                    <i class="fa-solid fa-rotate-left"></i> Reset
                                 </button>
                                 <button class="pw_add_direction_btn" id="pw_add_dir_btn" style="flex: 2;">
-                                    <i class="fa-solid fa-plus"></i> Добавить указание
+                                    <i class="fa-solid fa-plus"></i> Add Another Direction
                                 </button>
                             </div>
                             
                             <div style="display: flex; gap: 10px; margin-top: 10px;">
                                 <button class="pw_header_btn primary pw_director_generate_btn" id="pw_director_generate" style="margin-top:0;">
-                                    <i class="fa-solid fa-wand-magic-sparkles"></i> Создать варианты
+                                    <i class="fa-solid fa-wand-magic-sparkles"></i> Generate Suggestions
                                 </button>
                                 <button class="pw_header_btn" id="pw_show_results_btn" style="display:none; flex: 1; justify-content: center; align-items: center; gap: 8px;">
-                                    Показать варианты <i class="fa-solid fa-arrow-right"></i>
+                                    Show Suggestions <i class="fa-solid fa-arrow-right"></i>
                                 </button>
                             </div>
                         </div>
@@ -1931,7 +1930,7 @@
                         <div class="pw_director_view hidden" id="pw_director_results_view">
                             <div class="pw_results_header">
                                 <button class="pw_back_btn" id="pw_director_back">
-                                    <i class="fa-solid fa-arrow-left"></i> Back to Режим режиссёра
+                                    <i class="fa-solid fa-arrow-left"></i> Back to Director Mode
                                 </button>
                                 <!-- "Suggestions" text removed as requested -->
                             </div>
@@ -1956,12 +1955,12 @@
         let suggestionsGenerated = false;
 
         const placeholdersRandom = [
-            "Например: В двери таверны врывается незнакомец в маске...",
-            "Например: Древний амулет начинает пульсировать слабым светом...",
-            "Например: Внезапная гроза вынуждает их искать укрытие в пещере...",
-            "Например: Он достаёт из рукава спрятанный кинжал...",
-            "Например: Сирена корабля сообщает: «КРИТИЧЕСКИЙ СБОЙ»...",
-            "Например: Она шепчет тайну, меняющую всё..."
+            "e.g. A masked stranger bursts through the tavern doors...",
+            "e.g. The ancient amulet begins to glow pulsingly...",
+            "e.g. A sudden thunderstorm forces them to seek shelter cave...",
+            "e.g. He reveals a hidden dagger from his sleeve...",
+            "e.g. The spaceship's alarm blares 'CRITICAL FAILURE'...",
+            "e.g. She whispers a secret that changes everything..."
         ];
 
         const placeholdersContinuous = [
@@ -2094,7 +2093,7 @@
             });
 
             if (directions.length === 0) {
-                alert('Введите хотя бы одно указание.');
+                alert('Please enter at least one direction.');
                 return;
             }
 
@@ -2119,11 +2118,11 @@
                 <div class="pw_modal_header">
                     <h3 class="pw_modal_title">
                         <i class="fa-solid fa-compass"></i>
-                        <span id="pw_modal_title_text">Варианты развития сюжета</span>
+                        <span id="pw_modal_title_text">Story Directions</span>
                     </h3>
                     <div class="pw_modal_actions">
-                        <button class="pw_header_btn" id="pw_refresh_btn" title="Создать новые варианты">
-                            <i class="fa-solid fa-rotate"></i> Обновить
+                        <button class="pw_header_btn" id="pw_refresh_btn" title="Generate new suggestions">
+                            <i class="fa-solid fa-rotate"></i> Refresh
                         </button>
                         <button class="pw_modal_close" id="pw_close_suggestions">&times;</button>
                     </div>
@@ -2155,10 +2154,10 @@
         let catInfo = allCategories[category];
 
         if (category === 'director') {
-            catInfo = { name: 'Указания режиссёра', icon: 'fa-clapperboard' };
+            catInfo = { name: 'Director Instructions', icon: 'fa-clapperboard' };
         }
 
-        jQuery('#pw_modal_title_text').text(catInfo?.name || 'Варианты развития сюжета');
+        jQuery('#pw_modal_title_text').text(catInfo?.name || 'Story Directions');
         jQuery('#pw_suggestions_modal .pw_modal_title i')
             .removeClass()
             .addClass(`fa-solid ${catInfo?.icon || 'fa-compass'}`);
@@ -2210,7 +2209,7 @@
         });
     }
 
-    function showEmptyState(message = 'Нет доступных вариантов', outputContainer = null) {
+    function showEmptyState(message = 'No suggestions available', outputContainer = null) {
         const body = outputContainer || jQuery('#pw_modal_body');
         body.html(`
             <div class="pw_empty_state">
@@ -2234,7 +2233,7 @@
         const body = outputContainer || jQuery('#pw_modal_body');
 
         if (!suggestions || suggestions.length === 0) {
-            showEmptyState('Не удалось создать варианты. Попробуйте ещё раз.', outputContainer);
+            showEmptyState('No suggestions could be generated. Try again.', outputContainer);
             return;
         }
 
@@ -2289,14 +2288,14 @@
         if (!settings.insert_type_enabled) return text;
 
         if (settings.insert_type_ooc) return `[OOC: ${text}]`;
-        if (settings.insert_type_director) return `[Сценарист: ${text}]`;
+        if (settings.insert_type_director) return `[Director: ${text}]`;
 
         return text;
     }
 
     function copyToClipboard(text) {
         const formatted = getFormattedSuggestion(text);
-        navigator.clipboard.writeText(formatted).then(() => showToast('Скопировано в буфер обмена!'));
+        navigator.clipboard.writeText(formatted).then(() => showToast('Copied to clipboard!'));
     }
 
     function insertSuggestion(suggestion) {
@@ -2325,7 +2324,7 @@
 
         closeSuggestionsModal();
         jQuery('#pw_director_modal').removeClass('active');
-        showToast('Вариант вставлен!');
+        showToast('Suggestion inserted!');
     }
 
     function sendSuggestion(suggestion) {
@@ -2343,7 +2342,7 @@
             const sendBtn = jQuery('#send_but');
             if (sendBtn.length) {
                 sendBtn.trigger('click');
-                showToast('Вариант отправлен!');
+                showToast('Suggestion sent!');
             }
         }, 100);
     }
@@ -2388,14 +2387,14 @@
                         
                         <div class="pw_settings_section">
                             <h4 class="pw_settings_section_title">
-                                <i class="fa-solid fa-sliders"></i> Общие
+                                <i class="fa-solid fa-sliders"></i> General
                             </h4>
                             <div class="pw_setting_row">
-                                <span class="pw_setting_label"><i class="fa-solid fa-power-off"></i> Включить Pathweaver</span>
+                                <span class="pw_setting_label"><i class="fa-solid fa-power-off"></i> Enable Pathweaver</span>
                                 <div class="pw_toggle ${settings.enabled ? 'active' : ''}" data-setting="enabled"></div>
                             </div>
                             <div class="pw_setting_row">
-                                <span class="pw_setting_label"><i class="fa-solid fa-eye-slash"></i> Скрыть анимированную панель</span>
+                                <span class="pw_setting_label"><i class="fa-solid fa-eye-slash"></i> Hide Animated Bar</span>
                                 <div class="pw_toggle ${settings.hide_animated_bar ? 'active' : ''}" data-setting="hide_animated_bar"></div>
                             </div>
                             <div class="pw_setting_row">
@@ -2408,7 +2407,7 @@
                             </div>
                             
                             <div class="pw_setting_row">
-                                <span class="pw_setting_label"><i class="fa-solid fa-code-branch"></i> Тип вставки</span>
+                                <span class="pw_setting_label"><i class="fa-solid fa-code-branch"></i> Insert Type</span>
                                 <div class="pw_toggle ${settings.insert_type_enabled ? 'active' : ''}" data-setting="insert_type_enabled"></div>
                             </div>
                             
@@ -2418,7 +2417,7 @@
                                     <div class="pw_toggle ${settings.insert_type_ooc ? 'active' : ''}" data-setting="insert_type_ooc"></div>
                                 </div>
                                 <div class="pw_setting_row">
-                                    <span class="pw_setting_label" style="font-size: 0.9em;">[Сценарист: ]</span>
+                                    <span class="pw_setting_label" style="font-size: 0.9em;">[Director: ]</span>
                                     <div class="pw_toggle ${settings.insert_type_director ? 'active' : ''}" data-setting="insert_type_director"></div>
                                 </div>
                             </div>
@@ -2427,10 +2426,10 @@
 
                         <div class="pw_settings_section">
                             <h4 class="pw_settings_section_title">
-                                <i class="fa-solid fa-wand-magic-sparkles"></i> Генерация
+                                <i class="fa-solid fa-wand-magic-sparkles"></i> Generation
                             </h4>
                             <div class="pw_setting_row">
-                                <span class="pw_setting_label"><i class="fa-solid fa-list-ol"></i> Количество вариантов</span>
+                                <span class="pw_setting_label"><i class="fa-solid fa-list-ol"></i> Suggestions count</span>
                                 <div class="pw_setting_control">
                                     <select id="pw_sm_suggestions" class="pw_select text_pole">
                                         <option value="2" ${settings.suggestions_count == 2 ? 'selected' : ''}>2</option>
@@ -2440,7 +2439,7 @@
                                 </div>
                             </div>
                             <div class="pw_setting_row">
-                                <span class="pw_setting_label"><i class="fa-solid fa-layer-group"></i> Глубина контекста</span>
+                                <span class="pw_setting_label"><i class="fa-solid fa-layer-group"></i> Context depth</span>
                                 <div class="pw_setting_control">
                                     <select id="pw_sm_context" class="pw_select text_pole">
                                         <option value="2" ${settings.context_depth == 2 ? 'selected' : ''}>2 messages</option>
@@ -2452,7 +2451,7 @@
                                 </div>
                             </div>
                             <div class="pw_setting_row">
-                                <span class="pw_setting_label"><i class="fa-solid fa-text-width"></i> Длина вариантов</span>
+                                <span class="pw_setting_label"><i class="fa-solid fa-text-width"></i> Suggestion length</span>
                                 <div class="pw_setting_control">
                                     <select id="pw_sm_suggestion_length" class="pw_select text_pole">
                                         <option value="short" ${settings.suggestion_length === 'short' ? 'selected' : ''}>Short (2-3 sentences)</option>
@@ -2461,16 +2460,16 @@
                                 </div>
                             </div>
                             <div class="pw_setting_row pw_setting_row_stream">
-                                <span class="pw_setting_label"><i class="fa-solid fa-stream"></i> Потоковая генерация</span>
+                                <span class="pw_setting_label"><i class="fa-solid fa-stream"></i> Stream suggestions</span>
                                 <div class="pw_toggle ${settings.stream_suggestions ? 'active' : ''}" data-setting="stream_suggestions"></div>
                             </div>
                             <p class="pw_setting_hint pw_setting_stream_hint">
-                                Cards appear as each suggestion is generated. Works with Ollama and OpenAI-compatible APIs; Профиль подключения may also support streaming.
+                                Cards appear as each suggestion is generated. Works with Ollama and OpenAI-compatible APIs; Connection Profile may also support streaming.
                             </p>
                             
-                            <!-- Режим рассуждений Settings -->
+                            <!-- Reasoning Mode Settings -->
                             <div class="pw_setting_row" style="margin-top: 12px;">
-                                <span class="pw_setting_label"><i class="fa-solid fa-brain"></i> Режим рассуждений</span>
+                                <span class="pw_setting_label"><i class="fa-solid fa-brain"></i> Reasoning Mode</span>
                                 <div class="pw_toggle ${settings.reasoning_mode ? 'active' : ''}" data-setting="reasoning_mode"></div>
                             </div>
                             <p class="pw_setting_hint">
@@ -2478,7 +2477,7 @@
                             </p>
                             
                             <div id="pw_modal_max_tokens_row" class="pw_setting_row" style="${settings.reasoning_mode ? 'display: flex' : 'display: none'}; margin-top: 8px;">
-                                <span class="pw_setting_label"><i class="fa-solid fa-terminal"></i> Максимум выходных токенов</span>
+                                <span class="pw_setting_label"><i class="fa-solid fa-terminal"></i> Max Output Tokens</span>
                                 <div class="pw_setting_control">
                                     <input id="pw_modal_max_output_tokens" type="number" class="text_pole" value="${settings.max_output_tokens || 16384}" min="512" max="128000" step="512" style="width: 100px;"
                                         title="Maximum tokens for reasoning model output">
@@ -2491,42 +2490,42 @@
 
                         <div class="pw_settings_section">
                             <h4 class="pw_settings_section_title">
-                                <i class="fa-solid fa-book-open"></i> Источники контекста
+                                <i class="fa-solid fa-book-open"></i> Context Sources
                             </h4>
                             <p style="color: var(--pw-text-muted); font-size: 0.8rem; margin-bottom: 10px;">
                                 Include additional context for more accurate suggestions
                             </p>
                             <div class="pw_setting_row">
-                                <span class="pw_setting_label"><i class="fa-solid fa-scroll"></i> Использовать сценарий</span>
+                                <span class="pw_setting_label"><i class="fa-solid fa-scroll"></i> Include Scenario</span>
                                 <div class="pw_toggle ${settings.include_scenario ? 'active' : ''}" data-setting="include_scenario"></div>
                             </div>
                             <div class="pw_setting_row">
-                                <span class="pw_setting_label"><i class="fa-solid fa-user"></i> Использовать описание персонажа</span>
+                                <span class="pw_setting_label"><i class="fa-solid fa-user"></i> Include Character Description</span>
                                 <div class="pw_toggle ${settings.include_description ? 'active' : ''}" data-setting="include_description"></div>
                             </div>
                             <div class="pw_setting_row" style="flex-wrap: wrap;">
                                 <div style="display: flex; justify-content: space-between; width: 100%; align-items: center;">
-                                    <span class="pw_setting_label"><i class="fa-solid fa-globe"></i> Использовать Описание Мира из Лорбука</span>
+                                    <span class="pw_setting_label"><i class="fa-solid fa-globe"></i> Include World Info Lorebook</span>
                                     <div class="pw_toggle ${settings.include_worldinfo ? 'active' : ''}" data-setting="include_worldinfo"></div>
                                 </div>
                                 <div class="pw_warning_text" style="width: 100%; margin-top: 4px;">
-                                    <i class="fa-solid fa-triangle-exclamation"></i> Экспериментальная функция. Может ухудшать качество вариантов. Работает только для записей с Order 250 и выше.
+                                    <i class="fa-solid fa-triangle-exclamation"></i> Experimental: May decrease suggestion quality. Works only on entries with Order 250 or higher.
                                 </div>
                             </div>
                         </div>
 
                         <div class="pw_settings_section">
                             <h4 class="pw_settings_section_title">
-                                <i class="fa-solid fa-microchip"></i> Генерация Источник
+                                <i class="fa-solid fa-microchip"></i> Generation Source
                             </h4>
                             <div class="pw_setting_row">
-                                <span class="pw_setting_label"><i class="fa-solid fa-server"></i> Источник</span>
+                                <span class="pw_setting_label"><i class="fa-solid fa-server"></i> Source</span>
                                 <div class="pw_setting_control">
                                     <select id="pw_sm_source" class="pw_select text_pole">
                                         <option value="default" ${settings.source === 'default' ? 'selected' : ''}>Default (Main API)</option>
-                                        <option value="profile" ${settings.source === 'profile' ? 'selected' : ''}>Профиль подключения</option>
+                                        <option value="profile" ${settings.source === 'profile' ? 'selected' : ''}>Connection Profile</option>
                                         <option value="ollama" ${settings.source === 'ollama' ? 'selected' : ''}>Ollama</option>
-                                        <option value="openai" ${settings.source === 'openai' ? 'selected' : ''}>Совместимый с OpenAI</option>
+                                        <option value="openai" ${settings.source === 'openai' ? 'selected' : ''}>OpenAI Compatible</option>
                                     </select>
                                 </div>
                             </div>
@@ -2566,30 +2565,30 @@
 
                         <div class="pw_settings_section">
                             <h4 class="pw_settings_section_title">
-                                <i class="fa-solid fa-palette"></i> Внешний вид
+                                <i class="fa-solid fa-palette"></i> Appearance
                             </h4>
                             <div class="pw_setting_row">
-                                <span class="pw_setting_label"><i class="fa-solid fa-text-height"></i> Размер шрифта</span>
+                                <span class="pw_setting_label"><i class="fa-solid fa-text-height"></i> Font Size</span>
                                 <div class="pw_setting_control">
                                     <select id="pw_sm_font_size" class="pw_select text_pole">
                                         <option value="small" ${settings.bar_font_size === 'small' ? 'selected' : ''}>Small</option>
                                         <option value="default" ${settings.bar_font_size === 'default' ? 'selected' : ''}>Default</option>
-                                        <option value="large" ${settings.bar_font_size === 'large' ? 'selected' : ''}>Большой</option>
+                                        <option value="large" ${settings.bar_font_size === 'large' ? 'selected' : ''}>Large</option>
                                     </select>
                                 </div>
                             </div>
                             <div class="pw_setting_row">
-                                <span class="pw_setting_label"><i class="fa-solid fa-up-down"></i> Высота панели</span>
+                                <span class="pw_setting_label"><i class="fa-solid fa-up-down"></i> Bar Height</span>
                                 <div class="pw_setting_control">
                                     <select id="pw_sm_bar_height" class="pw_select text_pole">
-                                        <option value="compact" ${settings.bar_height === 'compact' ? 'selected' : ''}>Компактная</option>
+                                        <option value="compact" ${settings.bar_height === 'compact' ? 'selected' : ''}>Compact</option>
                                         <option value="default" ${settings.bar_height === 'default' ? 'selected' : ''}>Default</option>
                                         <option value="max" ${settings.bar_height === 'max' ? 'selected' : ''}>Max</option>
                                     </select>
                                 </div>
                             </div>
                             <div class="pw_setting_row">
-                                <span class="pw_setting_label"><i class="fa-solid fa-font"></i> Шрифт заголовков</span>
+                                <span class="pw_setting_label"><i class="fa-solid fa-font"></i> Title font</span>
                                 <div class="pw_setting_control">
                                     <select id="pw_sm_bar_title_font" class="pw_select pw_title_font_select text_pole">
                                         <option value="none" style="font-family: inherit" ${settings.bar_title_font === 'none' ? 'selected' : ''}>None (hidden)</option>
@@ -2613,8 +2612,8 @@
 
                         <div class="pw_settings_section">
                             <h4 class="pw_settings_section_title">
-                                <i class="fa-solid fa-wand-sparkles"></i> Удиви меня
-                                <span class="pw_setting_tooltip_icon" title="Удиви меня secretly injects an AI-generated suggestion into the chat context a set number of messages before it fires. Pick a style, and Pathweaver will quietly arm a hidden prompt. When the countdown hits, the suggestion appears naturally — like the story took an unexpected turn on its own.">?</span>
+                                <i class="fa-solid fa-wand-sparkles"></i> Surprise Me
+                                <span class="pw_setting_tooltip_icon" title="Surprise Me secretly injects an AI-generated suggestion into the chat context a set number of messages before it fires. Pick a style, and Pathweaver will quietly arm a hidden prompt. When the countdown hits, the suggestion appears naturally — like the story took an unexpected turn on its own.">?</span>
                             </h4>
                             <div class="pw_setting_row">
                                 <span class="pw_setting_label"><i class="fa-solid fa-infinity"></i> Endless Surprises
@@ -2666,9 +2665,9 @@
                                 <ul id="pw_sm_surprise_queue_list" class="pw_surprise_queue_list"></ul>
                             </details>
 
-                            <!-- Очистить всё button -->
+                            <!-- Clear all button -->
                             <button id="pw_sm_surprise_clear_all" class="pw_surprise_clear_all_btn" style="display:none; margin-top: 10px;">
-                                <i class="fa-solid fa-xmark"></i> Очистить всё surprises
+                                <i class="fa-solid fa-xmark"></i> Clear all surprises
                             </button>
                         </div>
 
@@ -2727,7 +2726,7 @@
                 jQuery('.pw_toggle[data-setting="insert_type_ooc"]').removeClass('active');
             }
 
-            // Удиви меня: show/hide range rows based on randomize toggle
+            // Surprise Me: show/hide range rows based on randomize toggle
             if (setting === 'surprise_randomize') {
                 if (settings.surprise_randomize) {
                     jQuery('#pw_sm_surprise_range_rows').show();
@@ -2739,7 +2738,7 @@
                 }
             }
 
-            // Удиви меня: clear queue when endless is turned off so no
+            // Surprise Me: clear queue when endless is turned off so no
             // lingering background generations can fire against local backends.
             if (setting === 'surprise_endless' && !settings.surprise_endless) {
                 clearAllSurprises();
@@ -2764,7 +2763,7 @@
             syncSettingsToPanel(); // Sync to extension panel (NOW after logic)
         });
 
-        // Источник dropdown
+        // Source dropdown
         jQuery('#pw_sm_source').on('change', function () {
             settings.source = this.value;
             saveSettings();
@@ -2793,7 +2792,7 @@
 
         jQuery('#pw_sm_context').on('change', function () { settings.context_depth = parseInt(this.value) || 4; saveSettings(); syncSettingsToPanel(); });
 
-        // Длина вариантов
+        // Suggestion length
         jQuery('#pw_sm_suggestion_length').on('change', function () { settings.suggestion_length = this.value; saveSettings(); syncSettingsToPanel(); });
 
         // Modal: Max output tokens
@@ -2805,7 +2804,7 @@
             syncSettingsToPanel();
         });
 
-        // Удиви меня: depth min select
+        // Surprise Me: depth min select
         jQuery('#pw_sm_surprise_depth_min').on('change', function () {
             const val = parseInt(this.value) || 2;
             settings.surprise_depth_min = val;
@@ -2818,7 +2817,7 @@
             syncSettingsToPanel();
         });
 
-        // Удиви меня: depth max select
+        // Surprise Me: depth max select
         jQuery('#pw_sm_surprise_depth_max').on('change', function () {
             const val = parseInt(this.value) || 6;
             settings.surprise_depth_max = val;
@@ -2860,15 +2859,15 @@
         // Style editor opener
         jQuery('#pw_open_style_editor').on('click', () => openStyleEditor());
 
-        // Удиви меня: clear all (modal)
+        // Surprise Me: clear all (modal)
         jQuery('#pw_sm_surprise_clear_all').on('click', function () {
             clearAllSurprises();
             renderSurpriseQueue();
             createActionBar();
-            showToast('Все сюрпризы очищены!');
+            showToast('Surprises cleared!');
         });
 
-        // Удиви меня: remove individual item from modal list
+        // Surprise Me: remove individual item from modal list
         jQuery('#pw_sm_surprise_queue_list').on('click', '.pw_sq_remove', function () {
             const idx = parseInt(jQuery(this).data('surprise-index'));
             if (!isNaN(idx) && idx >= 0 && idx < activeSurprises.length) {
@@ -2921,29 +2920,28 @@
     let originalBuiltinPrompts = {}; // Cache original prompts for reset
 
     // Default template for new custom styles
-    const defaultTemplate = `Вы — ассистент по креативному письму, генерирующий предложения для рассказов.
+    const defaultTemplate = `You are a creative writing assistant generating story suggestions.
 
-ЗАДАЧА: Сгенерируйте предложения для [ВАША ТЕМА/КАТЕГОРИЯ ЗДЕСЬ].
+TASK: Generate suggestions for [YOUR THEME/CATEGORY HERE].
 
-ТИПЫ ДЛЯ ВКЛЮЧЕНИЯ:
-- [Тип 1]: (description)
-- [Тип 2]: (description)
-- [Тип 3]: (description)
+TYPES TO INCLUDE:
+- [Type 1]: (description)
+- [Type 2]: (description)
+- [Type 3]: (description)
 
-ФОРМАТ ВЫВОДА:
-
-[ЭМОДЗИ] ЗАГОЛОВОК
-description
+OUTPUT FORMAT:
+[EMOJI] TITLE
+DESCRIPTION
 
 ---
 
-(Повторите для каждого предложения)
+(Repeat for each suggestion)
 
-ТРЕБОВАНИЯ:
-- Каждое предложение должно быть оригинальным и креативным
-- Заголовки должны быть броскими (менее 8 слов) — используйте только простой текст, БЕЗ разметки Markdown
-- Соответствуйте тону и жанру текущего рассказа
-- НЕ включайте нумерацию или преамбулу;`;
+GUIDELINES:
+- Each suggestion should be distinct and creative
+- Keep titles punchy (under 8 words) - use plain text only, NO markdown
+- Match the tone and genre of the ongoing story
+- Do NOT include numbering or preamble`;
 
     function openStyleEditor() {
         openStylesManager();
@@ -3031,7 +3029,7 @@ description
                                         <i class="fa-solid fa-paste"></i> Paste
                                     </button>
                                     <button class="pw_toolbar_btn" id="pw_reset_prompt">
-                                        <i class="fa-solid fa-rotate-left"></i> Сбросить
+                                        <i class="fa-solid fa-rotate-left"></i> Reset
                                     </button>
                                     <button class="pw_toolbar_btn" id="pw_export_prompt">
                                         <i class="fa-solid fa-download"></i> Export
@@ -3290,7 +3288,7 @@ description
             }
         });
 
-        // Сбросить prompt + icon (built-in only)
+        // Reset prompt + icon (built-in only)
         jQuery('#pw_reset_prompt').on('click', async () => {
             if (currentEditStyle && currentEditStyle.builtin) {
                 const original = await loadBuiltinPrompt(currentEditStyle.id);
@@ -3299,10 +3297,10 @@ description
                 const allCatsOrig = { ...MAIN_CATEGORIES, ...GENRE_CATEGORIES };
                 const originalIcon = allCatsOrig[currentEditStyle.id]?.icon || 'fa-star';
                 setIconDropdown(originalIcon);
-                showToast('Сбросить to default!');
+                showToast('Reset to default!');
             } else {
                 jQuery('#pw_edit_prompt').val(defaultTemplate);
-                showToast('Сбросить to template!');
+                showToast('Reset to template!');
             }
         });
 
@@ -3482,7 +3480,7 @@ description
     function closeStylesManager() {
         if (stylesManagerModal) {
             stylesManagerModal.removeClass('active');
-            // Сбросить flip state
+            // Reset flip state
             jQuery('#pw_manager_flipper').removeClass('flipped');
             currentEditStyle = null;
         }
@@ -3635,18 +3633,18 @@ description
      */
     async function generateSurpriseText(category, signal) {
         const stContext = SillyTavern.getContext();
-        if (!stContext) throw new Error('Контекст SillyTavern недоступен');
+        if (!stContext) throw new Error('SillyTavern context not available');
 
         // Guard for the default (generateRaw) source — it shares the same backend
         // pipeline as the main chat generation. If a generation is already in
         // progress, abort immediately to prevent concurrent requests crashing
         // local backends such as KoboldCPP.
         if (settings.source === 'default' && isGenerating) {
-            throw new DOMException('Генерация уже выполняется', 'AbortError');
+            throw new DOMException('Generation already in progress', 'AbortError');
         }
 
         const storyContext = extractContext();
-        if (!storyContext) throw new Error('Активный диалог не найден. Сначала начните чат.');
+        if (!storyContext) throw new Error('No active conversation found. Start a chat first.');
 
         let categoryPrompt = await loadPrompt(category);
 
@@ -3660,13 +3658,13 @@ description
 
         let contextBlock = '';
         if (storyContext.characterInfo) contextBlock += `${storyContext.characterInfo}\n\n`;
-        if (settings.include_scenario && storyContext.scenario) contextBlock += `Сценарий: ${storyContext.scenario}\n\n`;
+        if (settings.include_scenario && storyContext.scenario) contextBlock += `Scenario: ${storyContext.scenario}\n\n`;
         if (settings.include_description && storyContext.description) {
-            contextBlock += `Описание персонажа: ${storyContext.description.substring(0, 5000)}\n\n`;
+            contextBlock += `Character Description: ${storyContext.description.substring(0, 5000)}\n\n`;
         }
-        contextBlock += `Недавний разговор:\n${storyContext.history}`;
+        contextBlock += `Recent conversation:\n${storyContext.history}`;
 
-        const userPrompt = `[КОНТЕКСТ ИСТОРИИ]\n${contextBlock}\n\n[ЗАДАЧА]\nСгенерируй ровно одно самостоятельное сюжетное событие или развитие событий, которое можно скрытно внедрить в эту историю. Оно будет использоваться как скрытая системная заметка, которой ИИ воспользуется в подходящий момент развития сюжета.\n\nЗапиши результат в виде краткой системной инструкции (1–3 предложения) в формате:\n[СИСТЕМНАЯ ЗАМЕТКА: <секретное событие или развитие событий>]\n\nСделай заметку конкретной, неожиданной и интересной для сюжета. Не добавляй вступлений, пояснений или нескольких вариантов. Выведи только одну системную заметку.`;
+        const userPrompt = `[STORY CONTEXT]\n${contextBlock}\n\n[TASK]\nGenerate exactly ONE single, self-contained narrative event or development that could be secretly injected into this story. This will be used as a hidden system note that the AI will act upon at the right moment.\n\nWrite it as a concise system instruction (1-3 sentences) in the format:\n[System Note: <the secret event/development>]\n\nMake it specific, surprising, and narratively interesting. Do NOT include any preamble, explanation, or multiple options — just the single system note.`;
 
         const calculatedMaxTokens = 300;
         let result = '';
@@ -3674,8 +3672,8 @@ description
         if (settings.source === 'profile' && settings.preset) {
             const cm = stContext.extensionSettings?.connectionManager;
             const profile = cm?.profiles?.find(p => p.name === settings.preset);
-            if (!profile) throw new Error(`Профиль '${settings.preset}' не найден`);
-            if (!stContext.ConnectionManagerRequestService) throw new Error('ConnectionManagerRequestService недоступен');
+            if (!profile) throw new Error(`Profile '${settings.preset}' not found`);
+            if (!stContext.ConnectionManagerRequestService) throw new Error('ConnectionManagerRequestService not available');
 
             const messages = [
                 { role: 'system', content: categoryPrompt },
@@ -3769,7 +3767,7 @@ description
                 <div class="pw_modal_header">
                     <h3 class="pw_modal_title">
                         <i class="fa-solid fa-wand-sparkles pw_surprise_icon_spin"></i>
-                        Удиви меня
+                        Surprise Me
                     </h3>
                     <button class="pw_modal_close" id="pw_close_surprise">&times;</button>
                 </div>
@@ -3852,10 +3850,10 @@ description
         setTimeout(() => modal.addClass('active'), 10);
 
         // Start generation
-        runSurpriseГенерация(category, modal);
+        runSurpriseGeneration(category, modal);
     }
 
-    async function runSurpriseГенерация(category, modal) {
+    async function runSurpriseGeneration(category, modal) {
         surpriseAbortController = new AbortController();
         const signal = surpriseAbortController.signal;
 
@@ -3898,14 +3896,14 @@ description
             }
             error('Surprise generation failed:', err);
             jQuery('#pw_surprise_processing').hide();
-            jQuery('#pw_surprise_error_msg').text(err.message || 'Генерация failed. Please try again.');
+            jQuery('#pw_surprise_error_msg').text(err.message || 'Generation failed. Please try again.');
             jQuery('#pw_surprise_error').show();
 
             // Retry button
             jQuery('#pw_surprise_retry').off('click').on('click', () => {
                 jQuery('#pw_surprise_error').hide();
                 jQuery('#pw_surprise_processing').show();
-                runSurpriseГенерация(category, modal);
+                runSurpriseGeneration(category, modal);
             });
         } finally {
             surpriseAbortController = null;
@@ -4042,7 +4040,7 @@ description
         } else {
             jQuery('#pw_max_output_tokens_row').hide();
         }
-        // Удиви меня
+        // Surprise Me
         jQuery('#pw_surprise_randomize').prop('checked', settings.surprise_randomize);
         jQuery('#pw_surprise_endless').prop('checked', settings.surprise_endless);
         jQuery('#pw_surprise_depth_min').val(settings.surprise_depth_min);
@@ -4088,7 +4086,7 @@ description
         jQuery('.pw_toggle[data-setting="insert_type_ooc"]').toggleClass('active', settings.insert_type_ooc);
         jQuery('.pw_toggle[data-setting="insert_type_director"]').toggleClass('active', settings.insert_type_director);
 
-        // Удиви меня
+        // Surprise Me
         jQuery('.pw_toggle[data-setting="surprise_randomize"]').toggleClass('active', settings.surprise_randomize);
         jQuery('.pw_toggle[data-setting="surprise_endless"]').toggleClass('active', settings.surprise_endless);
         jQuery('#pw_sm_surprise_depth_min').val(settings.surprise_depth_min);
@@ -4133,7 +4131,7 @@ description
             createActionBar();
         });
 
-        // Источник dropdown - in settings panel
+        // Source dropdown - in settings panel
         jQuery('#pw_source').on('change', function () {
             settings.source = this.value;
             saveSettings();
@@ -4205,7 +4203,7 @@ description
             syncSettingsToModal();
         });
 
-        // Количество вариантов
+        // Suggestions count
         jQuery('#pw_suggestions_count').on('change', function () {
             settings.suggestions_count = Math.max(1, Math.min(20, parseInt(this.value) || 10));
             this.value = settings.suggestions_count;
@@ -4213,7 +4211,7 @@ description
             syncSettingsToModal();
         });
 
-        // Глубина контекста
+        // Context depth
         jQuery('#pw_context_depth').on('change', function () {
             settings.context_depth = parseInt(this.value) || 4;
             saveSettings();
@@ -4262,7 +4260,7 @@ description
 
 
 
-        // Скрыть анимированную панель
+        // Hide Animated Bar
         jQuery('#pw_hide_animated_bar').on('change', function () {
             settings.hide_animated_bar = this.checked;
             saveSettings();
@@ -4270,7 +4268,7 @@ description
             jQuery('.pw_action_bar').toggleClass('pw_hide_animated_bar', settings.hide_animated_bar);
         });
 
-        // Тип вставки Enabled
+        // Insert Type Enabled
         jQuery('#pw_insert_type_enabled').on('change', function () {
             settings.insert_type_enabled = this.checked;
             saveSettings();
@@ -4280,7 +4278,7 @@ description
             else jQuery('#pw_insert_type_options').hide();
         });
 
-        // Тип вставки OOC
+        // Insert Type OOC
         jQuery('#pw_insert_type_ooc').on('change', function () {
             settings.insert_type_ooc = this.checked;
             if (this.checked) {
@@ -4291,7 +4289,7 @@ description
             syncSettingsToModal();
         });
 
-        // Тип вставки Сценарист
+        // Insert Type Director
         jQuery('#pw_insert_type_director').on('change', function () {
             settings.insert_type_director = this.checked;
             if (this.checked) {
@@ -4302,14 +4300,14 @@ description
             syncSettingsToModal();
         });
 
-        // Длина вариантов
+        // Suggestion length
         jQuery('#pw_suggestion_length').on('change', function () {
             settings.suggestion_length = this.value;
             saveSettings();
             syncSettingsToModal();
         });
 
-        // Потоковая генерация
+        // Stream suggestions
         jQuery('#pw_stream_suggestions').on('change', function () {
             settings.stream_suggestions = this.checked;
             saveSettings();
@@ -4338,14 +4336,14 @@ description
             syncSettingsToModal();
         });
 
-        // Include Сценарий
+        // Include Scenario
         jQuery('#pw_include_scenario').on('change', function () {
             settings.include_scenario = this.checked;
             saveSettings();
             syncSettingsToModal();
         });
 
-        // Include description
+        // Include Description
         jQuery('#pw_include_description').on('change', function () {
             settings.include_description = this.checked;
             saveSettings();
@@ -4364,7 +4362,7 @@ description
             openStyleEditor();
         });
 
-        // Удиви меня: endless toggle
+        // Surprise Me: endless toggle
         jQuery('#pw_surprise_endless').on('change', function () {
             settings.surprise_endless = this.checked;
             saveSettings();
@@ -4381,7 +4379,7 @@ description
             }
         });
 
-        // Удиви меня: randomize toggle
+        // Surprise Me: randomize toggle
         jQuery('#pw_surprise_randomize').on('change', function () {            settings.surprise_randomize = this.checked;
             if (settings.surprise_randomize) {
                 jQuery('#pw_surprise_range_rows').show();
@@ -4395,7 +4393,7 @@ description
             syncSettingsToModal();
         });
 
-        // Удиви меня: depth min select
+        // Surprise Me: depth min select
         jQuery('#pw_surprise_depth_min').on('change', function () {
             const val = parseInt(this.value) || 2;
             settings.surprise_depth_min = val;
@@ -4407,7 +4405,7 @@ description
             syncSettingsToModal();
         });
 
-        // Удиви меня: depth max select
+        // Surprise Me: depth max select
         jQuery('#pw_surprise_depth_max').on('change', function () {
             const val = parseInt(this.value) || 6;
             settings.surprise_depth_max = val;
@@ -4419,15 +4417,15 @@ description
             syncSettingsToModal();
         });
 
-        // Удиви меня: clear all (settings panel)
+        // Surprise Me: clear all (settings panel)
         jQuery('#pw_surprise_clear_all').on('click', function () {
             clearAllSurprises();
             renderSurpriseQueue();
             createActionBar();
-            showToast('Все сюрпризы очищены!');
+            showToast('Surprises cleared!');
         });
 
-        // Удиви меня: remove individual item from panel list
+        // Surprise Me: remove individual item from panel list
         jQuery('#pw_surprise_queue_list').on('click', '.pw_sq_remove', function () {
             const idx = parseInt(jQuery(this).data('surprise-index'));
             if (!isNaN(idx) && idx >= 0 && idx < activeSurprises.length) {
@@ -4469,7 +4467,7 @@ description
         jQuery('.pw_action_bar').addClass('pw_processing');
     };
 
-    const handleГенерацияEnded = () => {
+    const handleGenerationEnded = () => {
         jQuery('.pw_action_bar').removeClass('pw_processing');
         cachedSuggestions = {};
         checkSurpriseTrigger();
@@ -4571,28 +4569,28 @@ description
     };
 
     function registerEvents() {
-        const { eventИсточник, event_types } = SillyTavern.getContext();
+        const { eventSource, event_types } = SillyTavern.getContext();
 
         // Document events - Namespace them!
         jQuery(document).on('mousedown.pathweaver', '#pw_profile_select, #pw_sm_profile', handleProfileMousedown);
 
-        // EventИсточник events
-        eventИсточник.on(event_types.CHAT_CHANGED, handleChatChanged);
-        eventИсточник.on(event_types.SETTINGS_UPDATED, handleSettingsUpdated);
-        eventИсточник.on(event_types.MESSAGE_SENT, handleMessageSent);
-        eventИсточник.on(event_types.GENERATION_ENDED, handleГенерацияEnded);
+        // EventSource events
+        eventSource.on(event_types.CHAT_CHANGED, handleChatChanged);
+        eventSource.on(event_types.SETTINGS_UPDATED, handleSettingsUpdated);
+        eventSource.on(event_types.MESSAGE_SENT, handleMessageSent);
+        eventSource.on(event_types.GENERATION_ENDED, handleGenerationEnded);
     }
 
     // Expose cleanup function for hot reload
     window.pathweaver_cleanup = function () {
         if (DEBUG) console.log(`[${EXTENSION_NAME}] Cleaning up...`);
-        const { eventИсточник, event_types } = SillyTavern.getContext();
+        const { eventSource, event_types } = SillyTavern.getContext();
 
-        // Remove EventИсточник listeners
-        eventИсточник.removeListener(event_types.CHAT_CHANGED, handleChatChanged);
-        eventИсточник.removeListener(event_types.SETTINGS_UPDATED, handleSettingsUpdated);
-        eventИсточник.removeListener(event_types.MESSAGE_SENT, handleMessageSent);
-        eventИсточник.removeListener(event_types.GENERATION_ENDED, handleГенерацияEnded);
+        // Remove EventSource listeners
+        eventSource.removeListener(event_types.CHAT_CHANGED, handleChatChanged);
+        eventSource.removeListener(event_types.SETTINGS_UPDATED, handleSettingsUpdated);
+        eventSource.removeListener(event_types.MESSAGE_SENT, handleMessageSent);
+        eventSource.removeListener(event_types.GENERATION_ENDED, handleGenerationEnded);
 
         // Remove Document listeners
         jQuery(document).off('mousedown.pathweaver');
@@ -4621,7 +4619,7 @@ description
         } catch (_) { }
         if (surpriseAbortController) { try { surpriseAbortController.abort(); } catch (_) { } }
 
-        // Сбросить state
+        // Reset state
         actionBar = null;
         suggestionsModal = null;
         settingsModal = null;
