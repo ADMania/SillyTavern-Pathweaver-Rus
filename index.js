@@ -956,17 +956,21 @@
                 .trim();
 
 			// Если модель засунула всё описание в заголовок
-			if (!description && title.length > 80) {
-				const m = title.match(/^(.{20,80}?[.!?])\s+(.*)$/);
-				if (m) {
-					title = m[1];
-					description = m[2];
+			if (!description) {
+				const words = title.split(/\s+/);
+				if (words.length > 8) {
+					description = title;
+					title = words.slice(0, 7).join(' ');
+					if (!/[.!?]$/.test(title)) {
+						title += '...';
+					}
 				}
 			}
 
             if (title && title.length > 2 && title.length < 150) {
                 suggestions.push({
                     emoji,
+                    title: title.substring(0, 100),
                     description: description || title
                 });
             }
