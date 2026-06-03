@@ -955,11 +955,23 @@
                 .replace(/\s+/g, ' ')
                 .trim();
 
+			// Если модель засунула всё описание в заголовок
+			if (!description) {
+				const words = title.split(/\s+/);
+				if (words.length > 8) {
+					description = title;
+					title = words.slice(0, 7).join(' ');
+					if (!/[.!?]$/.test(title)) {
+						title += '...';
+					}
+				}
+			}
+
             if (title && title.length > 2 && title.length < 150) {
                 suggestions.push({
                     emoji,
                     title: title.substring(0, 100),
-                    description: description || 'Нажмите, чтобы использовать этот вариант'
+                    description: description || title
                 });
             }
         }
